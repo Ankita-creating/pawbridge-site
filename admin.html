@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>PawBridge Admin</title>
+<style>
+:root{--bg:#F6F8F7;--s:#fff;--ink:#14263B;--m:#53657A;--l:#D5DEE3;--b:#14263B;--ob:#fff;--r:#D63A2F;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0E1A28;--s:#16273A;--ink:#EAF0F5;--m:#9FB1C3;--l:#2B4059;--b:#F2B01E;--ob:#14263B;--r:#E5584D;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.5}
+.w{max-width:900px;margin:0 auto;padding:18px}
+input,select,button{font:inherit;padding:10px 12px;border-radius:10px;border:1.5px solid var(--l);background:var(--s);color:var(--ink)}
+button{background:var(--b);color:var(--ob);border:0;font-weight:600;cursor:pointer}
+form{display:grid;gap:12px;max-width:340px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0}
+.c{background:var(--s);border:1.5px solid var(--l);border-radius:14px;padding:14px;margin:10px 0}
+.c small{color:var(--m)}.k{font-weight:700;text-transform:uppercase;font-size:.8rem}
+.c.new{border-left:6px solid var(--r)}
+dl{margin:8px 0;display:grid;grid-template-columns:auto 1fr;gap:2px 10px}dt{color:var(--m)}dd{margin:0;overflow-wrap:anywhere}
+</style></head><body><div class="w">
+<h1>PawBridge Admin</h1>
+<form id="lf" hidden><input id="em" type="email" placeholder="Admin email" required autocomplete="username"><input id="pw" type="password" placeholder="Password" required autocomplete="current-password"><button>Sign in</button><div id="err" role="alert" style="color:var(--r)"></div></form>
+<div id="app" hidden>
+<div class="bar"><select id="kind"><option value="">All types</option><option>rescue</option><option>pickup</option><option>booking</option><option>volunteer</option><option>lost_found</option><option>cruelty</option><option>adoption</option></select>
+<select id="st"><option value="">Any status</option><option>new</option><option>assigned</option><option>on the way</option><option>reached</option><option>done</option></select>
+<button id="rf">Refresh</button><button id="lo" style="background:var(--m)">Sign out</button><span id="cnt"></span></div>
+<div id="list"></div></div>
+<script src="config.js"></script>
+<script>
+const C=window.PB||{},$=s=>document.querySelector(s);let tok=sessionStorage.getItem('pbt');
+const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const H=()=>({apikey:C.key,Authorization:'Bearer '+tok,'Content-Type':'application/json'});
+const STS=['new','assigned','on the way','reached','done'];
+function out(){tok=null;sessionStorage.removeItem('pbt');$('#app').hidden=true;$('#lf').hidden=false}
+function start(){$('#lf').hidden=true;$('#app').hidden=false;load()}
+$('#lf').onsubmit=async e=>{e.preventDefault();$('#err').textContent='';try{const r=await fetch(C.url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:C.key,'Content-Type':'application/json'},body:JSON.stringify({email:$('#em').value,password:$('#pw').value})});const j=await r.json();if(!j.access_token)return $('#err').textContent='Login failed';tok=j.access_token;sessionStorage.setItem('pbt',tok);start()}catch(x){$('#err').textContent='Cannot reach server'}};
+async function load(){const k=$('#kind').value,s=$('#st').value;let q='?order=created_at.desc&limit=200';if(k)q+='&kind=eq.'+k;if(s)q+='&status=eq.'+encodeURIComponent(s);const r=await fetch(C.url+'/rest/v1/submissions'+q,{headers:H()});if(r.status===401||r.status===403)return out();const rows=await r.json();if(!Array.isArray(rows)){$('#list').textContent='Error loading data';return}
+$('#cnt').textContent=rows.length+' shown, '+rows.filter(x=>x.status==='new').length+' new';
+$('#list').innerHTML=rows.map(x=>`<div class="c ${x.status==='new'?'new':''}"><span class="k">${esc(x.kind)}</span> &middot; <b>${esc(x.ref)}</b> <small>${new Date(x.created_at).toLocaleString()}</small><dl>${Object.entries(x.data||{}).map(([a,b])=>`<dt>${esc(a)}</dt><dd>${a==='phone'?`<a href="tel:${esc(b)}">${esc(b)}</a>`:esc(b)}</dd>`).join('')}</dl><select data-id="${esc(x.id)}">${STS.map(v=>`<option ${v===x.status?'selected':''}>${v}</option>`).join('')}</select></div>`).join('')||'<p>No submissions.</p>'}
+$('#list').onchange=async e=>{const id=e.target.dataset.id;if(!id)return;await fetch(C.url+'/rest/v1/submissions?id=eq.'+id,{method:'PATCH',headers:Object.assign(H(),{Prefer:'return=minimal'}),body:JSON.stringify({status:e.target.value})});load()};
+$('#rf').onclick=load;$('#kind').onchange=load;$('#st').onchange=load;$('#lo').onclick=out;
+tok?start():out();setInterval(()=>{if(tok)load()},30000);
+</script></div></body></html>
