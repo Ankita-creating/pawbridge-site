@@ -19,11 +19,11 @@ create policy "visitors insert" on submissions for insert to anon
 
 -- Only YOU can read, update, delete. CHANGE THE EMAIL BELOW.
 create policy "admin select" on submissions for select to authenticated
-  using ((auth.jwt()->>'email')='you@example.com');
+  using ((auth.jwt()->>'email')='kan7ak7@gmail.com');
 create policy "admin update" on submissions for update to authenticated
-  using ((auth.jwt()->>'email')='you@example.com');
+  using ((auth.jwt()->>'email')='kan7ak7@gmail.com');
 create policy "admin delete" on submissions for delete to authenticated
-  using ((auth.jwt()->>'email')='you@example.com');
+  using ((auth.jwt()->>'email')='kan7ak7@gmail.com');
 
 -- Lets a visitor see ONLY the status of their own rescue reference
 create or replace function track_request(p_ref text) returns text
